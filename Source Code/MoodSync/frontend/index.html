@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MoodSync - Emotion-Based Music Recommender</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>MoodSync</h1>
+    <p class="tagline">Your emotions, your music 🎧</p>
+  </header>
+
+  <main class="glass-card">
+    <p class="description">
+  Discover music that matches your mood in real time. 
+  MoodSync uses AI to understand your facial expressions and instantly plays music tailored to how you feel. 
+  Just start your camera, pick your language, and enjoy a personalized listening experience.
+</p>
+
+    <label for="language">Select Language:</label>
+    <select id="language">
+      <option value="english">English</option>
+      <option value="hindi">Hindi</option>
+      <option value="punjabi">Punjabi</option>
+    </select>
+
+    <button id="startCameraBtn">Start Camera</button>
+
+    <video id="video" autoplay style="display:none;"></video>
+
+    <button id="detectBtn" disabled>Detect Emotion</button>
+<p id="emotionText" style="margin-top:10px; font-weight:bold;"></p>
+    <iframe 
+  id="youtubePlayer"
+  width="400"
+  height="250"
+  style="margin-top:20px; display:none;"
+  allow="autoplay"
+  allowfullscreen
+></iframe>
+  </main>
+
+  <footer>
+    &copy; 2026 MoodSync. All rights reserved.
+  </footer>
+
+  <script>
+    const video = document.getElementById("video");
+    const detectBtn = document.getElementById("detectBtn");
+    const languageSelect = document.getElementById("language");
+    const startCameraBtn = document.getElementById("startCameraBtn");
+
+    let stream;
+
+    startCameraBtn.addEventListener("click", async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        video.style.display = "block";
+
+        startCameraBtn.style.display = "none";  // hide start button
+        detectBtn.disabled = false;              // enable detect button
+      } catch (err) {
+        alert("Camera access denied or unavailable.");
+        console.error(err);
+      }
+    });
+
+    detectBtn.addEventListener("click", async () => {
+      if (!stream) {
+        alert("Please start the camera first.");
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
+      const formData = new FormData();
+      formData.append("image", blob, "capture.jpg");
+      formData.append("language", languageSelect.value);
+
+      detectBtn.textContent = "Detecting...";
+      detectBtn.disabled = true;
+
+      try {
+        const response = await fetch("http://localhost:3000/detect", {
+          method: "POST",
+          body: formData,
+        });
+        const result = await response.json();
+        document.getElementById("emotionText").textContent =
+  "Detected Emotion: " + result.emotion;
+        //window.open(result.url, "_blank");
+        const player = document.getElementById("youtubePlayer");
+
+player.src = result.url;   // backend already sends embed URL
+player.style.display = "block";
+      } catch (err) {
+        alert("Emotion detection failed. Please try again.");
+        console.error(err);
+      } finally {
+        detectBtn.textContent = "Detect Emotion";
+        detectBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
